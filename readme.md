@@ -8,11 +8,10 @@ This project processes live air quality measurements from OpenAQ and displays 3-
 
 ## Features
 
-- 📊 Real-time data processing from OpenAQ via SQS
-- 🗺️ Interactive map visualization with color-coded air quality levels
-- 📍 City-level aggregation across multiple monitoring stations
-- ⏱️ 3-hour rolling averages for all pollutants (PM2.5, PM10, NO2, O3, CO, SO2)
-- 🔄 Auto-refresh every 5 minutes
+- Real-time data processing from OpenAQ via SQS
+- Interactive map visualization with color-coded air quality levels
+- City-level aggregation across multiple monitoring stations
+- 3-hour rolling averages for all pollutants (PM2.5, PM10, NO2, O3, CO, SO2)
 
 ## Architecture
 ```
