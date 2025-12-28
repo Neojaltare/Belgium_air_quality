@@ -1,4 +1,4 @@
-# Belgium Air Quality Monitor 🌍
+# Belgium Air Quality Monitor
 
 Real-time air quality monitoring dashboard for Belgian cities using OpenAQ data.
 
@@ -35,12 +35,3 @@ OpenAQ → SNS → SQS → Lambda (Processor) → DynamoDB → Lambda (API) → 
 - 🟠 **Unhealthy for Sensitive Groups** (35-55 µg/m³)
 - 🔴 **Unhealthy** (55-150 µg/m³)
 - 🟣 **Very Unhealthy** (150+ µg/m³)
-
-## Local Development
-
-1. Update the API URL in `index.html` (line 258)
-2. Open `index.html` in a browser
-
-## License
-
-MIT
