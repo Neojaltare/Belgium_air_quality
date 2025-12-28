@@ -26,7 +26,7 @@ OpenAQ → SNS → SQS → Lambda (Processor) → DynamoDB → Lambda (API) → 
 
 ## Live Demo
 
-🔗 [View Dashboard](https://neojaltare.github.io/belgium-air-quality/)
+🔗 [View Dashboard](https://neojaltare.github.io/Belgium_air_quality/)
 
 ## Air Quality Index
 
