@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Belgium Air Quality - Real-time Dashboard</title>
+    
+    <!-- Leaflet CSS for maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1rem;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .info-bar {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+        }
+        
+        #map {
+            height: 600px;
+            border-radius: 10px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+        
+        .legend {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-top: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .legend h3 {
+            margin-bottom: 1rem;
+            color: #333;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        
+        .legend-color {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin-right: 1rem;
+            border: 2px solid rgba(0,0,0,0.1);
+        }
+        
+        .legend-label {
+            flex: 1;
+        }
+        
+        .legend-label strong {
+            display: block;
+            color: #333;
+        }
+        
+        .legend-label span {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+        
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 1rem;
+            border-radius: 5px;
+            margin: 1rem 0;
+        }
+        
+        /* Popup styling */
+        .popup-content {
+            min-width: 250px;
+        }
+        
+        .popup-city {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+        
+        .popup-pollutant {
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+            background: #f9f9f9;
+            border-radius: 5px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .popup-pollutant strong {
+            color: #667eea;
+        }
+        
+        .popup-meta {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #eee;
+            font-size: 0.85rem;
+            color: #666;
+        }
+        
+        .refresh-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s;
+        }
+        
+        .refresh-button:hover {
+            background: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🌍 Belgium Air Quality Monitor</h1>
+        <p>Real-time 3-hour rolling averages across Belgian cities</p>
+    </div>
+    
+    <div class="container">
+        <div class="info-bar">
+            <div class="stat">
+                <div class="stat-value" id="cityCount">-</div>
+                <div class="stat-label">Cities Monitored</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="pollutantCount">-</div>
+                <div class="stat-label">Total Measurements</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="lastUpdate">-</div>
+                <div class="stat-label">Last Updated</div>
+            </div>
+            <button class="refresh-button" onclick="loadData()">🔄 Refresh Data</button>
+        </div>
+        
+        <div id="loading" class="loading">
+            Loading air quality data...
+        </div>
+        
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div id="map"></div>
+        
+        <div class="legend">
+            <h3>Air Quality Index (PM2.5)</h3>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #00e400;"></div>
+                <div class="legend-label">
+                    <strong>Good</strong>
+                    <span>0-12 µg/m³ - Air quality is satisfactory</span>
+                </div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ffff00;"></div>
+                <div class="legend-label">
+                    <strong>Moderate</strong>
+                    <span>12-35 µg/m³ - Acceptable for most people</span>
+                </div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ff7e00;"></div>
+                <div class="legend-label">
+                    <strong>Unhealthy for Sensitive Groups</strong>
+                    <span>35-55 µg/m³ - Sensitive people should limit outdoor activity</span>
+                </div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ff0000;"></div>
+                <div class="legend-label">
+                    <strong>Unhealthy</strong>
+                    <span>55-150 µg/m³ - Everyone may experience health effects</span>
+                </div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #8f3f97;"></div>
+                <div class="legend-label">
+                    <strong>Very Unhealthy</strong>
+                    <span>150+ µg/m³ - Health alert: everyone may experience serious effects</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // REPLACE THIS WITH YOUR LAMBDA FUNCTION URL!
+        const API_URL = 'https://y3wpakd6xenp6hirpbj52lj3va0aoabu.lambda-url.eu-west-1.on.aws/';
+        
+        let map;
+        let markers = [];
+        
+        // Initialize map centered on Belgium
+        function initMap() {
+            map = L.map('map').setView([50.5039, 4.4699], 8); // Belgium center
+            
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+        }
+        
+        // Get color based on PM2.5 value (Air Quality Index)
+        function getColorForPM25(value) {
+            if (value <= 12) return '#00e400';      // Good
+            if (value <= 35) return '#ffff00';      // Moderate
+            if (value <= 55) return '#ff7e00';      // Unhealthy for sensitive
+            if (value <= 150) return '#ff0000';     // Unhealthy
+            return '#8f3f97';                       // Very unhealthy
+        }
+        
+        // Get color based on NO2 value
+        function getColorForNO2(value) {
+            if (value <= 40) return '#00e400';      // Good
+            if (value <= 100) return '#ffff00';     // Moderate
+            if (value <= 200) return '#ff7e00';     // Poor
+            return '#ff0000';                       // Very poor
+        }
+        
+        // Format timestamp
+        function formatTime(timestamp) {
+            if (!timestamp) return 'N/A';
+            const date = new Date(timestamp);
+            return date.toLocaleString('en-GB', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric',
+                hour: '2-digit', 
+                minute: '2-digit',
+                timeZone: 'Europe/Brussels' 
+            });
+        }
+        
+        // Create popup content for a city
+        function createPopupContent(city) {
+            let html = `<div class="popup-content">`;
+            html += `<div class="popup-city">${city.city}</div>`;
+            
+            // Show all pollutants
+            const pollutants = city.pollutants;
+            for (const [param, data] of Object.entries(pollutants)) {
+                html += `
+                    <div class="popup-pollutant">
+                        <strong>${param.toUpperCase()}</strong>: ${data.average_value.toFixed(2)} ${data.unit}
+                        <br><small>${data.measurement_count} measurement(s)</small>
+                    </div>
+                `;
+            }
+            
+            // Add metadata
+            const firstPollutant = Object.values(pollutants)[0];
+            if (firstPollutant) {
+                html += `
+                    <div class="popup-meta">
+                        📍 ${city.latitude.toFixed(4)}, ${city.longitude.toFixed(4)}<br>
+                        🕐 Updated: ${formatTime(firstPollutant.last_updated)}
+                    </div>
+                `;
+            }
+            
+            html += `</div>`;
+            return html;
+        }
+        
+        // Add markers to map
+        function addMarkers(cities) {
+            // Clear existing markers
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+            
+            cities.forEach(city => {
+                if (!city.latitude || !city.longitude) return;
+                
+                // Determine color based on PM2.5 if available, otherwise NO2
+                let color = '#999'; // Default gray
+                if (city.pollutants.pm25) {
+                    color = getColorForPM25(city.pollutants.pm25.average_value);
+                } else if (city.pollutants.no2) {
+                    color = getColorForNO2(city.pollutants.no2.average_value);
+                }
+                
+                // Create custom icon
+                const icon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div style="background-color: ${color}; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.4);"></div>`,
+                    iconSize: [18, 18],
+                    iconAnchor: [6, 6]
+                });
+                
+                // Create marker
+                const marker = L.marker([city.latitude, city.longitude], { icon })
+                    .bindPopup(createPopupContent(city))
+                    .addTo(map);
+                
+                markers.push(marker);
+            });
+        }
+        
+        // Load data from API
+        async function loadData() {
+            try {
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('error').style.display = 'none';
+                
+                const response = await fetch(API_URL);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Update stats
+                document.getElementById('cityCount').textContent = data.total_cities || 0;
+                
+                let totalMeasurements = 0;
+                data.cities.forEach(city => {
+                    totalMeasurements += Object.keys(city.pollutants).length;
+                });
+                document.getElementById('pollutantCount').textContent = totalMeasurements;
+                
+                document.getElementById('lastUpdate').textContent = formatTime(data.timestamp);
+                
+                // Add markers
+                addMarkers(data.cities);
+                
+                document.getElementById('loading').style.display = 'none';
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = 
+                    'Error loading air quality data. Please check the API URL and try again. ' + error.message;
+            }
+        }
+        
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            initMap();
+            loadData();
+            
+            // Auto-refresh every 5 minutes
+            setInterval(loadData, 5 * 60 * 1000);
+        });
+    </script>
+</body>
+</html>
