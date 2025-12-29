@@ -322,12 +322,17 @@
             }
             
             // Add metadata
-            const firstPollutant = Object.values(pollutants)[0];
-            if (firstPollutant) {
+            const pollutantsList = Object.values(pollutants);
+            if (pollutantsList.length > 0) {
+                // Find the most recently updated pollutant
+                const latestPollutant = pollutantsList.reduce((latest, current) => {
+                    return new Date(current.last_updated) > new Date(latest.last_updated) ? current : latest;
+                });
+                
                 html += `
                     <div class="popup-meta">
                         📍 ${city.latitude.toFixed(4)}, ${city.longitude.toFixed(4)}<br>
-                        🕐 Updated: ${formatTime(firstPollutant.last_updated)}
+                        🕐 Updated: ${formatTime(latestPollutant.last_updated)}
                     </div>
                 `;
             }
